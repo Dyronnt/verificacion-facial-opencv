@@ -1,0 +1,12 @@
+.venv/
+venv/
+__pycache__/
+*.pyc
+
+datos/
+modelo/
+eventos.csv
+calibracion.csv
+
+.xd/
+*.zip
