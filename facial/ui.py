@@ -2,8 +2,8 @@
 import csv
 from pathlib import Path
 
-from PySide6.QtCore import Qt, QUrl, QTimer
-from PySide6.QtGui import QDesktopServices, QPixmap
+from PySide6.QtCore import Qt, QUrl, QTimer, Slot
+from PySide6.QtGui import QDesktopServices, QPixmap, QImage
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QLabel, QPushButton, QVBoxLayout, QHBoxLayout,
     QFrame, QStackedWidget, QGridLayout, QProgressBar, QComboBox,
@@ -383,6 +383,7 @@ class Window(QMainWindow):
             conditions = [None, 'registrada', 'no registrada']
             self.worker.set_condition(conditions[self.verify_ui['condition'].currentIndex()])
 
+    @Slot(QImage, object, int)
     def update_camera(self, image, decision, count):
         if self.worker is None or self.worker.isInterruptionRequested():
             return
@@ -424,15 +425,18 @@ class Window(QMainWindow):
                     ui['reason'].setText('Liberando la cámara…')
             self.notify('Deteniendo la sesión…')
 
+    @Slot(str)
     def failed(self, text):
         self.session_message = text
         self.session_error = True
         self.notify(text, True)
 
+    @Slot(str)
     def completed(self, text):
         self.session_message = text
         self.notify(text)
 
+    @Slot()
     def finished(self):
         old = self.worker
         self.worker = None
