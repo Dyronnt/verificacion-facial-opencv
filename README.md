@@ -1,325 +1,174 @@
 # Verificación facial con OpenCV
 
-Prototipo académico desarrollado en Python que permite registrar muestras faciales, entrenar un modelo LBPH y verificar un rostro mediante una cámara web.
+Aplicación de escritorio para la **HT-04 / Tarea 08 de Machine Learning y Deep Learning**. Permite registrar muestras, entrenar un modelo LBPH y simular la verificación de una persona desde una interfaz moderna en PySide6.
 
-El programa simula la autorización de acceso a una aplicación. No desbloquea el sistema operativo ni controla dispositivos físicos.
+![Interfaz real de verificación, sin cámara activa](docs/capturas/verificacion.png)
 
-## Requisitos
+La captura muestra la aplicación implementada en estado de espera. No es una prueba de reconocimiento ni contiene un rostro o una decisión simulada.
 
-- Python y un entorno virtual.
-- Cámara web disponible y permisos para utilizarla.
-- Entorno local con interfaz gráfica para mostrar las ventanas de OpenCV.
-- Dependencias especificadas en `requirements.txt`:
+## Inicio rápido en Windows
 
-```text
-numpy==2.5.4
-opencv-contrib-python==5.0.0.93
-```
-
-La instalación de estas versiones depende de que existan paquetes compatibles con la versión de Python y el sistema operativo utilizados.
-
-## Archivos del proyecto
-
-| Archivo | Función |
-| --- | --- |
-| `registrar.py` | Captura hasta 35 muestras faciales del participante. |
-| `entrenar.py` | Entrena un modelo LBPH con al menos 15 muestras válidas. |
-| `verificar.py` | Verifica el rostro e integra las primeras cinco mejoras. |
-| `eliminar_datos.py` | Elimina las muestras y el modelo después de solicitar confirmación. |
-| `requirements.txt` | Especifica las versiones de las dependencias. |
-| `.gitignore` | Excluye datos biométricos, registros locales y archivos del entorno virtual. |
-| `README.md` | Describe la instalación, ejecución y funcionamiento del proyecto. |
-
-## Archivos generados durante el uso
-
-| Elemento | Contenido |
-| --- | --- |
-| `datos/` | Muestras faciales con nombres como `usuario1_000.png`. |
-| `modelo/lbph.yml` | Modelo generado durante el entrenamiento. |
-| `calibracion.csv` | Estadísticas de comparación de los tres umbrales. |
-| `eventos.csv` | Fecha, hora, resultado y motivo de los eventos registrados. |
-
-Estos elementos se generan localmente y se excluyen del repositorio mediante `.gitignore`.
-
-## Instalación en Windows
-
-Abre una terminal dentro de la carpeta del proyecto.
-
-### 1. Crear el entorno virtual
+Utiliza **Python 3.12 de 64 bits**, una cámara web y una terminal en la carpeta del proyecto.
 
 ```powershell
 python -m venv .venv
-```
-
-### 2. Activar el entorno virtual
-
-En PowerShell:
-
-```powershell
 .\.venv\Scripts\Activate.ps1
-```
-
-En CMD:
-
-```bat
-.venv\Scripts\activate.bat
-```
-
-### 3. Instalar las dependencias
-
-```powershell
 python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
+python app.py
 ```
 
-Evita instalar otras variantes de OpenCV en el mismo entorno, porque comparten el módulo `cv2`.
-
-### 4. Comprobar la instalación
+Si PowerShell impide activar el entorno, puedes ejecutar directamente:
 
 ```powershell
-python -c "import cv2; print(cv2.__version__); print(hasattr(cv2, 'face'))"
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+.\.venv\Scripts\python.exe app.py
 ```
 
-La comprobación debe mostrar la versión de OpenCV y `True`, indicando que el módulo `cv2.face` está disponible.
+Las dependencias están fijadas en `requirements.txt`: NumPy 2.3.5, OpenCV contrib 4.11.0.86 y PySide6 Essentials 6.12.0. No instales simultáneamente otras variantes de OpenCV porque comparten `cv2`.
 
-## Ejecución
+Se utiliza OpenCV 4.11 porque incluye el XML Haar y el módulo LBPH necesarios. En la revisión local, el paquete 5.0.0.93 no contenía el XML Haar. La nueva selección se comprobó con Python 3.12.
 
-Ejecuta los programas desde la carpeta del proyecto y con el entorno virtual activado.
+## Cómo utilizar la aplicación
 
-### 1. Registrar muestras
+### 1. Registrar
+
+En **Registro**, lee y marca la autorización. Presiona **Iniciar registro** y mantén un solo rostro ante la cámara. Varía ligeramente la posición con buena iluminación.
+
+Se capturan 35 imágenes en escala de grises, de 160 × 160 píxeles, con al menos 150 ms entre muestras. Solo se capturan cuadros que superan los mínimos de brillo y nitidez.
+
+El registro se prepara en memoria y se guarda al completar las 35 muestras. Si detienes antes de completarlo, las muestras previas se conservan. Al completar un registro nuevo, se sustituyen las anteriores y se invalida el modelo previo. Debes entrenar de nuevo. La autorización se desmarca al finalizar la sesión.
+
+### 2. Entrenar
+
+En **Inicio**, selecciona **Entrenar modelo**. Se requieren al menos 15 muestras válidas de 160 × 160; el registro de la interfaz genera 35. El entrenamiento utiliza LBPH y la etiqueta `1`.
+
+La cámara y el entrenamiento se ejecutan en hilos de trabajo. La navegación se bloquea durante una operación para evitar sesiones simultáneas. Puedes detener la cámara; si cierras durante una operación, la ventana espera su finalización y libera los recursos.
+
+### 3. Verificar
+
+En **Verificación**, selecciona **Iniciar verificación**. La autorización simulada exige:
+
+- Exactamente un rostro.
+- Brillo medio de al menos 55 y varianza del Laplaciano de al menos 60.
+- Etiqueta `1` y distancia LBPH estrictamente menor que el umbral.
+- Ocho cuadros válidos consecutivos; cualquier cuadro inválido reinicia el contador.
+
+Una distancia menor indica mayor similitud: **no es un porcentaje de confianza**. El rectángulo verde indica coincidencia en ese cuadro; la autorización requiere completar los ocho cuadros.
+
+La selección de participante permite etiquetar la prueba como registrada o no registrada. Se comparan simultáneamente los umbrales 50, 65 y 80. Seleccionar una condición no autoriza el acceso. **Sin etiquetar / pausar** detiene el conteo estadístico, pero la verificación continúa.
+
+### 4. Consultar y exportar resultados
+
+En **Resultados** puedes consultar los últimos 200 eventos y la calibración de la última sesión, o exportar los CSV completos. Los eventos se acumulan; `calibracion.csv` se reemplaza al finalizar cada verificación que haya abierto la cámara.
+
+La calibración cuenta **cuadros evaluados con calidad suficiente**, no intentos independientes. Los cuadros sin rostro o con mala calidad no se contabilizan. Sin etiquetar al participante, los contadores quedan en cero.
+
+### 5. Configurar y eliminar datos
+
+En **Configuración** elige el índice de cámara y el umbral 50, 65 u 80 antes de iniciar. Los cambios se aplican a la siguiente sesión y vuelven a los valores iniciales al cerrar la aplicación.
+
+**Eliminar datos biométricos** exige escribir `ELIMINAR`. Solo borra `datos/usuario1_*.png` y `modelo/lbph.yml`. Los CSV y otros archivos se conservan. Después es necesario registrar y entrenar nuevamente.
+
+## Ubicación de los datos
+
+| Forma de ejecución | Ubicación |
+| --- | --- |
+| `python app.py` | Carpeta del proyecto, independientemente del directorio de la terminal. |
+| Aplicación `.exe` | `%LOCALAPPDATA%\VerificacionFacial\` del usuario de Windows. |
+
+En ambos casos, se generan `datos/`, `modelo/lbph.yml`, `eventos.csv` y `calibracion.csv`. La ruta activa aparece en Configuración, junto con un botón para abrirla. El `.exe` comienza sin datos y no importa automáticamente las muestras de la carpeta del código.
+
+## Ejecutable de Windows
+
+### Descargar la construcción de GitHub Actions
+
+En la pestaña **Actions**, abre una ejecución correcta de **Verificar y construir Windows** y descarga el artefacto **VerificacionFacial-Windows**. Extrae el ZIP completo y abre `VerificacionFacial.exe`.
+
+Conserva toda la carpeta, incluida `_internal`. No requiere instalar Python. Las construcciones no están firmadas digitalmente. El flujo guarda artefactos durante 30 días y también puede iniciarse manualmente desde Actions cuando esté disponible en la rama principal.
+
+### Construir en tu computadora
+
+Desde **Windows**, con el entorno activado:
+
+```powershell
+python -m pip install -r requirements-build.txt
+python scripts/build_windows.py
+```
+
+La distribución queda en `dist/VerificacionFacial/`. Es una aplicación portable con un `.exe` y sus dependencias, no un instalador. Se incorpora el recurso Haar mediante `--collect-data cv2`. No se incorporan las muestras, los modelos ni los CSV locales.
+
+El ejecutable de Windows debe construirse en Windows. La construcción automatizada comprueba las pruebas y genera la distribución; su apertura y la cámara deben comprobarse también en una PC Windows real.
+
+## Estructura
+
+| Archivo o carpeta | Función |
+| --- | --- |
+| `app.py` | Punto de entrada gráfico. |
+| `facial/core.py` | Detección, calidad, decisión, calibración y almacenamiento. |
+| `facial/workers.py` | Cámara y entrenamiento en hilos con señales Qt. |
+| `facial/ui.py` | Cinco secciones, cámara integrada, controles, tablas y confirmaciones. |
+| `registrar.py`, `entrenar.py`, `verificar.py`, `eliminar_datos.py` | Programas de la entrega anterior conservados. |
+| `requirements.txt`, `requirements-build.txt` | Dependencias para ejecutar y empaquetar. |
+| `scripts/build_windows.py` | Construcción portable con PyInstaller. |
+| `scripts/capture_ui.py` | Capturas de la interfaz vacía con carpeta temporal sin datos. |
+| `tests/` | Pruebas de lógica, almacenamiento, hilos y controles Qt. |
+| `docs/DESARROLLO.md` | Procedimiento antes/después y diagrama general. |
+| `docs/PRUEBAS.md` | Verificación técnica y pruebas físicas pendientes. |
+| `.github/workflows/windows.yml` | Pruebas y empaquetado para Windows. |
+
+## Versión anterior y control de versiones
+
+El punto de partida es el commit [`691be6f`](https://github.com/Dyronnt/verificacion-facial-opencv/commit/691be6fd422a86dad97982ee7843580a9c554218), que ya incluye seis mejoras: calibración, confirmación temporal, calidad, eventos, panel informativo y eliminación de datos.
+
+Las nuevas mejoras se desarrollan en `mejora/interfaz-escritorio` con commits por etapa. La versión anterior se puede descargar desde ese commit para construir el apartado `ANTES` de la entrega. No es necesario duplicar todo el proyecto dentro del repositorio.
+
+Los programas originales siguen disponibles:
 
 ```powershell
 python registrar.py
-```
-
-El programa crea la carpeta `datos/` si no existe y captura hasta 35 muestras cuando detecta exactamente un rostro.
-
-Cada muestra se convierte a escala de grises y se redimensiona a 160 × 160 píxeles. Presiona `q` para finalizar anticipadamente.
-
-Utiliza únicamente tu propio rostro o el de una persona que haya autorizado expresamente su participación.
-
-### 2. Entrenar el modelo
-
-```powershell
 python entrenar.py
-```
-
-El entrenamiento requiere al menos 15 muestras válidas. Se utiliza la etiqueta `1` para el usuario registrado.
-
-Al finalizar, se genera el archivo:
-
-```text
-modelo/lbph.yml
-```
-
-### 3. Verificar el rostro
-
-```powershell
 python verificar.py
-```
-
-El programa detecta rostros y evalúa la calidad de la imagen antes de realizar la predicción.
-
-Para autorizar el acceso simulado deben cumplirse estas condiciones:
-
-- Aparece exactamente un rostro.
-- El brillo y la nitidez superan los límites configurados.
-- La etiqueta predicha es `1`.
-- La distancia LBPH es menor que el umbral seleccionado.
-- Se mantienen ocho cuadros consecutivos válidos.
-
-Cualquier cuadro inválido reinicia el contador de confirmación.
-
-### Controles del teclado
-
-La ventana de OpenCV debe estar seleccionada para recibir las teclas.
-
-| Tecla | Acción |
-| --- | --- |
-| `R` | Indica que se está probando con la persona registrada. |
-| `N` | Indica que se está probando con una persona no registrada. |
-| `P` | Pausa la recopilación de estadísticas de calibración. |
-| `1` | Selecciona el umbral 50 para decidir el acceso. |
-| `2` | Selecciona el umbral 65 para decidir el acceso. |
-| `3` | Selecciona el umbral 80 para decidir el acceso. |
-| `Q` | Cierra la verificación. |
-
-Las teclas R y N indican la condición real del participante para clasificar los resultados de calibración. No autorizan ni deniegan directamente el acceso.
-
-La tecla P pausa únicamente el conteo de estadísticas; la verificación continúa funcionando.
-
-## Mejoras implementadas
-
-### 1. Calibración del umbral
-
-Se comparan los umbrales 50, 65 y 80 sobre las mismas predicciones.
-
-Para cada umbral se contabilizan:
-
-- Aceptaciones correctas.
-- Rechazos correctos.
-- Falsas aceptaciones.
-- Falsos rechazos.
-
-El participante indica la condición real mediante R o N. Si no se selecciona una condición, no se acumulan estadísticas.
-
-Los resultados cuentan cuadros evaluados con calidad suficiente, no intentos independientes de acceso. La selección del umbral para decidir el acceso es manual; el programa no elige automáticamente el mejor valor.
-
-Al finalizar la verificación, se genera o reemplaza `calibracion.csv` con los resultados de esa ejecución.
-
-### 2. Confirmación temporal
-
-Se exigen ocho cuadros consecutivos válidos antes de autorizar el acceso simulado.
-
-Mientras se completa la confirmación, se muestra el estado `CONFIRMANDO`. Cualquier cuadro inválido reinicia el contador.
-
-### 3. Calidad de imagen
-
-Se comprueba el brillo medio del rostro y su nitidez antes de ejecutar la predicción.
-
-Los valores iniciales son:
-
-| Parámetro | Valor |
-| --- | --- |
-| Brillo medio mínimo | 55 |
-| Nitidez mínima, medida mediante la varianza del Laplaciano | 60 |
-
-Si la imagen está demasiado oscura o borrosa, se bloquea la predicción y se muestra una indicación.
-
-Estos límites son experimentales y requieren evaluación con la cámara y las condiciones de uso.
-
-### 4. Registro de eventos
-
-Se guarda en `eventos.csv`:
-
-- Fecha y hora.
-- Resultado.
-- Motivo.
-
-Se registra un evento cuando cambia el resultado o el motivo, evitando escribir una fila por cada cuadro mientras el estado permanece igual.
-
-También se registra un error si no se puede leer un cuadro de la cámara. El archivo añade nuevos registros sin reemplazar los anteriores y no contiene imágenes.
-
-### 5. Interfaz mejorada
-
-Se añade un panel negro debajo de la imagen para mostrar:
-
-- Resultado y motivo.
-- Distancia LBPH.
-- Brillo y nitidez.
-- Progreso de confirmación.
-- Umbral seleccionado.
-- Condición de la prueba.
-- Controles del teclado.
-
-El rectángulo del rostro es verde cuando el cuadro cumple el criterio de coincidencia y rojo cuando no lo cumple. El rectángulo verde por sí solo no significa que ya se hayan completado los ocho cuadros de confirmación.
-
-### 6. Protección de datos
-
-El programa `eliminar_datos.py` permite eliminar las muestras y el modelo entrenado al finalizar la práctica.
-
-```powershell
 python eliminar_datos.py
 ```
 
-Primero muestra los archivos seleccionados y solicita escribir:
+Ejecuta esos programas desde la raíz del proyecto y evita abrirlos mientras la aplicación está usando la cámara. En la verificación original: R/N etiquetan al participante, P pausa la calibración, 1/2/3 seleccionan el umbral y Q finaliza.
 
-```text
-ELIMINAR
+## Verificación técnica
+
+```powershell
+python -m unittest discover -s tests -v
+python -c "import cv2; from pathlib import Path; print(cv2.__version__); print(hasattr(cv2, 'face')); print(Path(cv2.data.haarcascades, 'haarcascade_frontalface_default.xml').is_file())"
 ```
 
-Cualquier otra respuesta cancela la operación sin borrar archivos.
+Las pruebas usan matrices sintéticas y cámaras/detectores controlados; también entrenan y recargan un LBPH real con imágenes sintéticas. No demuestran precisión biométrica, detección con personas reales ni rendimiento de la cámara física.
 
-Los archivos seleccionados para eliminación son:
+Para regenerar las capturas de la interfaz sin datos:
 
-- `datos/usuario1_*.png`
-- `modelo/lbph.yml`
-
-El programa informa cuántos archivos se eliminaron correctamente y muestra los errores que puedan producirse. No elimina automáticamente los CSV, otras imágenes ni copias guardadas en otras ubicaciones.
-
-Después de borrar las muestras y el modelo, es necesario repetir el registro y el entrenamiento para volver a utilizar la verificación.
-
-## Pruebas
-
-La evaluación del prototipo contempla los siguientes escenarios:
-
-| Escenario | Comportamiento que se debe evaluar |
-| --- | --- |
-| Persona registrada con iluminación suficiente | Coincidencia y autorización tras ocho cuadros válidos. |
-| Persona registrada con poca luz | Bloqueo por calidad o rechazo de la coincidencia. |
-| Persona voluntaria no registrada | Denegación del acceso y posibles falsas aceptaciones. |
-| Ausencia de rostro o presencia de varios rostros | Acceso denegado y contador reiniciado. |
-| Fotografía de la persona registrada | Posible suplantación por ausencia de detección de vida. |
-
-Los resultados observados, las distancias y las capturas se documentan en el informe de la práctica.
-
-## Fundamentos
-
-### Píxeles y matrices
-
-Las imágenes digitales se representan como matrices de valores. OpenCV utiliza habitualmente el orden BGR para los canales de una imagen de color.
-
-### Escala de grises
-
-La conversión a escala de grises reduce la imagen a un solo canal para el procesamiento utilizado en esta práctica.
-
-### Detección Haar
-
-El detector Haar Cascade localiza regiones candidatas a rostro. Detectar un rostro no permite determinar su identidad.
-
-### Reconocimiento LBPH
-
-El modelo LBPH compara patrones locales del rostro con las muestras utilizadas durante el entrenamiento.
-
-### Tamaño uniforme
-
-Los rostros se redimensionan a 160 × 160 píxeles para mantener un formato consistente entre registro y verificación.
-
-### Distancia y umbral
-
-Una distancia LBPH menor representa mayor similitud según el modelo. No es un porcentaje de confianza.
-
-El umbral determina cuándo se acepta una coincidencia. Su elección requiere pruebas porque pueden producirse falsas aceptaciones y falsos rechazos.
+```powershell
+python scripts/capture_ui.py
+```
 
 ## Problemas frecuentes
 
 | Problema | Acción |
 | --- | --- |
-| No existe `cv2.face` | Comprueba que utilizas el entorno virtual correcto y que está instalado `opencv-contrib-python`. |
-| No se puede abrir la cámara | Revisa los permisos y cierra otras aplicaciones que puedan estar utilizándola. |
-| No existe `modelo/lbph.yml` | Ejecuta primero el registro y después el entrenamiento. |
-| No hay suficientes muestras | Registra al menos 15 imágenes válidas. |
-| Se rechaza a la persona registrada | Revisa iluminación, enfoque, posición, variedad de muestras y umbral. |
-| La calibración muestra todos los contadores en cero | Selecciona R o N y comprueba que el rostro supere los controles de calidad. |
-| Las teclas no responden | Selecciona la ventana de OpenCV antes de pulsarlas. |
+| Falta `cv2.face` o el XML Haar | Instala `requirements.txt` en un entorno limpio y ejecuta la comprobación anterior. |
+| Cámara no disponible | Revisa permisos, cierra otras aplicaciones y cambia el índice en Configuración. |
+| Modelo pendiente | Completa Registro y luego Entrenar modelo en Inicio. |
+| Registro no avanza | Mejora iluminación, enfoque y posición; debe aparecer un solo rostro. |
+| Se rechaza al participante registrado | Revisa muestras, iluminación y distancias; compara los umbrales con pruebas etiquetadas. |
+| Calibración en cero | Selecciona la condición del participante y comprueba la calidad del rostro. |
+| Falla el `.exe` al moverlo | Conserva `_internal` y todos los archivos de la distribución. |
 
-## Privacidad y publicación
+## Alcance y privacidad
 
-Las imágenes faciales y el modelo entrenado se mantienen localmente y no se publican en GitHub.
+El sistema **simula acceso a una aplicación**: no desbloquea Windows ni controla dispositivos físicos. No incorpora detección de vida; una fotografía puede engañarlo. La iluminación, el enfoque y la orientación afectan las decisiones. La interfaz y el empaquetado facilitan el uso, pero no demuestran una mejora de precisión o de resistencia a suplantaciones.
 
-El archivo `.gitignore` excluye:
+Utiliza tu propio rostro o el de una persona que autorice su participación. Las muestras y el modelo se mantienen localmente y se excluyen de Git mediante `.gitignore`. No publiques capturas que expongan identidades sin autorización. Los datos locales no están cifrados por esta aplicación.
 
-```gitignore
-.venv/
-venv/
-__pycache__/
-*.pyc
+## Referencias
 
-datos/
-modelo/
-eventos.csv
-calibracion.csv
-
-.xd/
-*.zip
-```
-
-El repositorio incluye el código y las instrucciones. Cada participante genera sus propias muestras y su modelo al ejecutar los programas.
-
-## Limitaciones
-
-Este sistema es un prototipo académico y no debe utilizarse como autenticación de producción.
-
-No incorpora detección de vida, por lo que una fotografía puede engañar al modelo. La confirmación temporal y los controles de calidad no eliminan esta vulnerabilidad.
-
-La iluminación, el enfoque, la orientación del rostro y la variedad de las muestras pueden afectar los resultados. Las mejoras implementadas permiten controlar y analizar el proceso, pero no garantizan una identificación segura.
+- [OpenCV: LBPH](https://docs.opencv.org/4.x/df/d25/classcv_1_1face_1_1LBPHFaceRecognizer.html)
+- [Qt for Python: hilos y señales](https://doc.qt.io/qtforpython-6/PySide6/QtCore/QThread.html)
+- [PyInstaller: uso y empaquetado](https://pyinstaller.org/en/stable/usage.html)

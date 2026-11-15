@@ -10,3 +10,10 @@ calibracion.csv
 
 .xd/
 *.zip
+
+# Empaquetado y pruebas locales
+build/
+dist/
+*.spec
+.pytest_cache/
+*.tmp.yml

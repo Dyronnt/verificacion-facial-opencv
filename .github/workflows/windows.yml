@@ -1,0 +1,38 @@
+name: Verificar y construir Windows
+on:
+  workflow_dispatch:
+  push:
+    branches: [mejora/interfaz-escritorio]
+  pull_request:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            requirements-build.txt
+      - name: Instalar dependencias
+        run: python -m pip install -r requirements-build.txt
+      - name: Probar lógica e interfaz sin cámara física
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: python -m unittest discover -s tests -v
+      - name: Comprobar detector y módulo LBPH
+        run: python -c "import cv2; from pathlib import Path; assert hasattr(cv2, 'face'); assert Path(cv2.data.haarcascades, 'haarcascade_frontalface_default.xml').is_file()"
+      - name: Construir aplicación portable
+        run: python scripts/build_windows.py
+      - name: Guardar distribución
+        uses: actions/upload-artifact@v4
+        with:
+          name: VerificacionFacial-Windows
+          path: dist/VerificacionFacial/
+          if-no-files-found: error
+          retention-days: 30
