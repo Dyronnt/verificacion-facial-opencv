@@ -64,7 +64,7 @@ La eliminación gráfica exige escribir ELIMINAR y conserva los CSV. Las rutas d
 
 Se añadió `scripts/build_windows.py`, que ejecuta PyInstaller en Windows con `--windowed`, `--onedir` y `--collect-data cv2`. La salida es una carpeta portable con `VerificacionFacial.exe` y sus dependencias. No se empaquetan datos biométricos locales.
 
-El workflow de GitHub Actions instala dependencias, ejecuta las pruebas y construye la distribución en Windows. Que el empaquetado termine correctamente no demuestra el funcionamiento de la cámara en la computadora del participante; esa comprobación se registra por separado.
+El workflow de GitHub Actions instala dependencias, ejecuta las pruebas y construye la distribución en Windows. Después inicia el ejecutable con `--smoke-test`, que abre la ventana y la cierra automáticamente sin activar la cámara; el proceso debe finalizar correctamente dentro de 60 segundos. Que el empaquetado termine correctamente no demuestra el funcionamiento de la cámara en la computadora del participante; esa comprobación se registra por separado.
 
 ### 9. Verificar y documentar
 

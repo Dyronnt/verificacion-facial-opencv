@@ -98,7 +98,7 @@ python scripts/build_windows.py
 
 La distribución queda en `dist/VerificacionFacial/`. Es una aplicación portable con un `.exe` y sus dependencias, no un instalador. Se incorpora el recurso Haar mediante `--collect-data cv2`. No se incorporan las muestras, los modelos ni los CSV locales.
 
-El ejecutable de Windows debe construirse en Windows. La construcción automatizada comprueba las pruebas y genera la distribución; su apertura y la cámara deben comprobarse también en una PC Windows real.
+El ejecutable de Windows debe construirse en Windows. La construcción automatizada ejecuta las pruebas, genera la distribución y comprueba el arranque del `.exe` sin cámara. El uso interactivo y la cámara deben comprobarse también en una PC Windows real.
 
 ## Estructura
 
@@ -111,6 +111,7 @@ El ejecutable de Windows debe construirse en Windows. La construcción automatiz
 | `registrar.py`, `entrenar.py`, `verificar.py`, `eliminar_datos.py` | Programas de la entrega anterior conservados. |
 | `requirements.txt`, `requirements-build.txt` | Dependencias para ejecutar y empaquetar. |
 | `scripts/build_windows.py` | Construcción portable con PyInstaller. |
+| `scripts/smoke_windows.py` | Comprueba el arranque del ejecutable sin cámara. |
 | `scripts/capture_ui.py` | Capturas de la interfaz vacía con carpeta temporal sin datos. |
 | `tests/` | Pruebas de lógica, almacenamiento, hilos y controles Qt. |
 | `docs/DESARROLLO.md` | Procedimiento antes/después y diagrama general. |
